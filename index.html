@@ -195,6 +195,45 @@
       40% { transform: scale(1.2); opacity: 1; }
     }
 
+    /* 轻触进入按钮（解锁音频） */
+    .enter-btn {
+      margin-top: 32px;
+      padding: 12px 40px;
+      font-family: Georgia, 'Noto Serif SC', 'STSong', 'SimSun', serif;
+      font-size: 14px;
+      color: var(--primary-400);
+      letter-spacing: 6px;
+      background: transparent;
+      border: 1px solid rgba(167, 139, 250, 0.4);
+      border-radius: 30px;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.4s var(--ease-out);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .enter-btn.show {
+      opacity: 1;
+      pointer-events: auto;
+      animation: fade-text-in 0.6s ease forwards;
+    }
+    .enter-btn:hover, .enter-btn:active {
+      background: rgba(124, 92, 200, 0.15);
+      border-color: var(--primary-400);
+      color: var(--primary-300);
+      box-shadow: 0 0 20px rgba(167, 139, 250, 0.3);
+    }
+    .enter-hint {
+      margin-top: 10px;
+      font-size: 9px;
+      color: rgba(167, 139, 250, 0.35);
+      letter-spacing: 2px;
+      opacity: 0;
+      transition: opacity 0.4s ease 0.3s;
+    }
+    .enter-hint.show { opacity: 1; }
+
     /* ============================================================
        Intro Layer - 入场动画
        ============================================================ */
@@ -609,7 +648,9 @@
       </div>
       <div class="loading-title">神 谕 降 临</div>
       <div class="loading-sub">Daily Oracle</div>
-      <div class="loading-dots-row">
+      <button class="enter-btn" id="enterBtn">轻 触 进 入</button>
+      <div class="enter-hint" id="enterHint">点击解锁音效体验</div>
+      <div class="loading-dots-row" id="loadingDots">
         <span></span><span></span><span></span><span></span>
       </div>
     </div>
@@ -682,7 +723,7 @@
       </div>
 
       <!-- 版本水印 -->
-      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v22 · vercel-deploy</div>
+      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v23 · audio-unlock</div>
 
     </div>
   </div>
@@ -767,14 +808,23 @@
 
       function tryFinishLoading() {
         if (!videoReady || !loadTimerDone) return;
-        console.log('[Oracle] 加载完成，进入入场动画');
-        loadingLayer.classList.add('hidden');
-        startIntro();
+        console.log('[Oracle] 加载完成，等待用户点击进入');
+        // 隐藏加载动画点，显示进入按钮
+        var loadingDots = document.getElementById('loadingDots');
+        var enterBtn = document.getElementById('enterBtn');
+        var enterHint = document.getElementById('enterHint');
+        if (loadingDots) loadingDots.style.display = 'none';
+        if (enterBtn) enterBtn.classList.add('show');
+        if (enterHint) enterHint.classList.add('show');
+        // 用户点击进入 → 解锁音频 → 开始入场动画
+        enterBtn.addEventListener('click', function() {
+          loadingLayer.classList.add('hidden');
+          startIntro();
+        }, { once: true });
       }
 
-      // --- 步骤 2：播放入场动画 ---
+      // --- 步骤 2：播放入场动画（用户已点击"进入"，有声播放应被允许）---
       function startIntro() {
-        // 先尝试有声播放（用户可能已有交互）
         introVideo.muted = false;
         introVideo.volume = 1;
         var playPromise = introVideo.play();
@@ -784,20 +834,18 @@
             console.log('[Oracle] 入场动画播放中（有声）');
             scheduleUiFadeIn();
           }).catch(function(e) {
-            // 有声被浏览器拦截 → 静音重试（浏览器允许静音自动播放）
-            console.warn('[Oracle] 有声自动播放被拦截，静音重试', e);
+            // 极少数情况：用户手势仍被判定无效 → 静音重试
+            console.warn('[Oracle] 有声播放仍被拦截，静音重试', e);
             introVideo.muted = true;
             introVideo.play().then(function() {
-              console.log('[Oracle] 入场动画播放中（静音）');
+              console.log('[Oracle] 入场动画播放中（静音兜底）');
               scheduleUiFadeIn();
             }).catch(function(e2) {
-              // 静音也播不了 → 跳过
               console.warn('[Oracle] 静音播放也失败，跳过入场', e2);
               skipIntro();
             });
           });
         } else {
-          // 旧浏览器不支持 promise，使用 timeupdate 兜底
           scheduleUiFadeIn();
         }
       }
