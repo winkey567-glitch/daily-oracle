@@ -287,6 +287,10 @@
       height: 100%;
       object-fit: cover;
       object-position: center;
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
     }
 
     /* 求卦层加载动画 */
@@ -304,6 +308,7 @@
 
     .divination-loader.hidden {
       opacity: 0;
+      visibility: hidden;
       pointer-events: none;
     }
 
@@ -723,7 +728,7 @@
       </div>
 
       <!-- 版本水印 -->
-      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v27 · video-compressed-0.6MB</div>
+      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v28 · video-render-fix</div>
 
     </div>
   </div>
@@ -1036,14 +1041,17 @@
         function showLoader() { divinationLoader.classList.remove('hidden'); }
 
         // === 视频事件 ===
+        // ended: 正常播完 → 跳转
         divinationVideo.addEventListener('ended', function() {
           if (!divinationDone) goToResult();
         });
-        divinationVideo.addEventListener('playing', function() {
-          if (!divinationDone) hideLoader();
-        });
-        divinationVideo.addEventListener('waiting', function() {
-          if (!divinationDone) showLoader();
+        // timeupdate: 结尾检测（部分 WebView 不触发 ended）
+        divinationVideo.addEventListener('timeupdate', function() {
+          if (divinationDone) return;
+          var dur = divinationVideo.duration || 0;
+          if (dur > 0 && divinationVideo.currentTime >= dur - 0.3) {
+            goToResult();
+          }
         });
 
         // === 简化播放逻辑（视频仅 0.6MB，秒加载）===
@@ -1055,6 +1063,7 @@
             divinationVideo.muted = false;
             divinationVideo.volume = 1;
             divinationVideo.play().then(function() {
+              // 播放开始后永久隐藏 loader，不再因 waiting 重新显示
               hideLoader();
               startStallDetection();
             }).catch(function() {
