@@ -1,0 +1,17 @@
+{
+  "name": "Daily Oracle - 每日一卦·链上存证",
+  "short_name": "Daily Oracle",
+  "description": "基于易经六十四卦的每日求卦 DApp，链上签名存证",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#7C5CC8",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "素材/背景logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
