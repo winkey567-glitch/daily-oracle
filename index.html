@@ -728,7 +728,7 @@
       </div>
 
       <!-- 版本水印 -->
-      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v28 · video-render-fix</div>
+      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v29 · load-reset-fix</div>
 
     </div>
   </div>
@@ -762,11 +762,8 @@
       function preloadDivinationVideo() {
         if (divinationPreloaded) return;
         divinationPreloaded = true;
-        // 延迟 2s 让循环背景先启动，不争抢带宽
-        setTimeout(function() {
-          console.log('[Oracle] 开始后台预加载算卦视频');
-          divinationVideo.load();
-        }, 2000);
+        // preload="auto" 已让浏览器自动加载，不需要手动 load()
+        // 手动 load() 会重置正在播放的视频，导致算卦画面冻结
       }
 
       if (isReturning) {
@@ -1054,8 +1051,11 @@
           }
         });
 
-        // === 简化播放逻辑（视频仅 0.6MB，秒加载）===
+        // === 简化播放逻辑（视频仅 0.77MB，秒加载）===
+        var playbackStarted = false;
         function startDivinationPlayback() {
+          if (playbackStarted) return;  // 防止重复调用（loadedmetadata + 3s 超时可能同时触发）
+          playbackStarted = true;
           try { divinationVideo.currentTime = 0; } catch(err) {}
 
           function attemptPlay() {
