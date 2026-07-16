@@ -682,7 +682,7 @@
       </div>
 
       <!-- 版本水印 -->
-      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v21 · divination-video-update</div>
+      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v22 · vercel-deploy</div>
 
     </div>
   </div>
@@ -817,9 +817,27 @@
             }
           }, delay);
         } else {
-          // 降级：仍然用 timeupdate
-          console.warn('[Oracle] 视频时长未知，使用 timeupdate 兜底');
+          // 降级：时长未知，8s 后强制显示 UI
+          console.warn('[Oracle] 视频时长未知，8s 后强制渐入 UI');
+          uiFadeTimer = setTimeout(function() {
+            if (!uiShown) {
+              uiShown = true;
+              contentLayer.classList.add('ui-visible');
+              console.log('[Oracle] UI 强制渐入 (时长未知兜底)');
+            }
+          }, 8000);
         }
+
+        // === 终极安全网：视频时长 + 10s 后如果 UI 还没显示，强制结束入场 ===
+        var safetyDelay = (dur > 1 ? dur : 15) * 1000 + 10000;
+        setTimeout(function() {
+          if (!introEnded) {
+            console.warn('[Oracle] 安全网触发：强制结束入场动画');
+            introEnded = true;
+            sessionStorage.setItem('oracle_visited', 'true');
+            hideIntroAndPlayLoop();
+          }
+        }, safetyDelay);
       }
 
       // --- timeupdate 兜底（防止 setTimeout 因为某些原因没触发）---
