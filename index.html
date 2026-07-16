@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="theme-color" content="#7C5CC8">
+  <meta name="description" content="基于易经六十四卦的每日求卦 DApp，OKX 钱包链上签名存证">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta property="og:title" content="Daily Oracle - 每日一卦·链上存证">
+  <meta property="og:description" content="基于易经六十四卦的每日求卦 DApp，OKX 钱包链上签名存证">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Daily Oracle - 每日一卦·链上存证">
+  <meta name="twitter:description" content="基于易经六十四卦的每日求卦 DApp">
+  <link rel="manifest" href="manifest.json">
+  <title>Daily Oracle - 每日一卦·链上存证</title>
+  <!-- Fonts: 使用系统本地字体，避免 Google Fonts 在国内被墙导致页面渲染阻塞 -->
+  <style>
+    :root {
+      --primary-400: #a78bfa;
+      --primary-500: #7C5CC8;
+      --primary-600: #6B4FB5;
+      --accent-red: #C8553D;
+      --ink-900: #1a1a1a;
+      --ink-700: #4a4a4a;
+      --ink-500: #888888;
+      --paper-warm: #e8e6e3;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --radius-lg: 16px;
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    *, *::before, *::after {
+      margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      background: #1a1a1a;
+      overflow: hidden;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* ============================================================
+       App Frame
+       ============================================================ */
+    .app-frame {
+      width: 100%;
+      max-width: 430px;
+      height: 100vh;
+      height: 100dvh;
+      position: relative;
+      overflow: hidden;
+      background: var(--paper-warm);
+    }
+
+    @media (min-width: 431px) {
+      .app-frame {
+        height: 850px;
+        border-radius: 40px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25), 0 0 0 8px rgba(255, 255, 255, 0.05);
+      }
+    }
+
+    /* ============================================================
+       Loading Layer - 加载画面
+       ============================================================ */
+    .loading-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 200;
+      background: radial-gradient(ellipse at center, #1a1530 0%, #0d0b18 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.6s var(--ease-out), visibility 0.6s var(--ease-out);
+    }
+
+    .loading-layer.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* 中央旋转太极环 */
+    .loading-ring {
+      position: relative;
+      width: 80px;
+      height: 80px;
+    }
+
+    .loading-ring-outer {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: var(--primary-500);
+      border-right-color: rgba(124, 92, 200, 0.5);
+      animation: ring-spin 1.2s linear infinite;
+    }
+
+    .loading-ring-middle {
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 1.5px solid transparent;
+      border-bottom-color: var(--primary-400);
+      border-left-color: rgba(167, 139, 250, 0.4);
+      animation: ring-spin 1.6s linear infinite reverse;
+    }
+
+    .loading-ring-inner {
+      position: absolute;
+      inset: 18px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(124,92,200,0.3), transparent 60%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .loading-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary-400);
+      animation: dot-pulse 1s ease-in-out infinite;
+      box-shadow: 0 0 12px rgba(167, 139, 250, 0.6), 0 0 24px rgba(167, 139, 250, 0.3);
+    }
+
+    @keyframes ring-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes dot-pulse {
+      0%, 100% { transform: scale(0.8); opacity: 0.5; }
+      50% { transform: scale(1.4); opacity: 1; }
+    }
+
+    /* 标题 */
+    .loading-title {
+      margin-top: 28px;
+      font-family: Georgia, 'Times New Roman', 'Noto Serif SC', 'STSong', 'SimSun', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', serif;
+      font-size: 18px;
+      color: var(--primary-400);
+      letter-spacing: 4px;
+      opacity: 0;
+      animation: fade-text-in 0.8s ease 0.3s forwards;
+    }
+
+    .loading-sub {
+      margin-top: 8px;
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+      font-size: 10px;
+      color: rgba(167, 139, 250, 0.5);
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      opacity: 0;
+      animation: fade-text-in 0.8s ease 0.5s forwards;
+    }
+
+    @keyframes fade-text-in {
+      to { opacity: 1; }
+    }
+
+    /* 底部进度点 */
+    .loading-dots-row {
+      position: absolute;
+      bottom: 18%;
+      display: flex;
+      gap: 10px;
+    }
+
+    .loading-dots-row span {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: rgba(167, 139, 250, 0.4);
+      animation: dot-sequence 1.5s ease-in-out infinite;
+    }
+
+    .loading-dots-row span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots-row span:nth-child(3) { animation-delay: 0.4s; }
+    .loading-dots-row span:nth-child(4) { animation-delay: 0.6s; }
+
+    @keyframes dot-sequence {
+      0%, 100% { transform: scale(0.6); opacity: 0.3; }
+      40% { transform: scale(1.2); opacity: 1; }
+    }
+
+    /* ============================================================
+       Intro Layer - 入场动画
+       ============================================================ */
+    .intro-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 100;
+      background: #000;
+      transition: opacity 0.8s var(--ease-out), visibility 0.8s var(--ease-out);
+    }
+
+    .intro-layer.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .intro-layer video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    /* ============================================================
+       Divination Process Layer - 求卦过程
+       ============================================================ */
+    .divination-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 180;
+      background: #0d0b18;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.5s var(--ease-out), visibility 0.5s var(--ease-out);
+    }
+
+    .divination-layer.active {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .divination-layer video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    /* 求卦层加载动画 */
+    .divination-loader {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 182;
+      transition: opacity 0.4s var(--ease-out);
+      background: #0d0b18;
+    }
+
+    .divination-loader.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .divination-loader .loading-ring {
+      width: 64px;
+      height: 64px;
+    }
+
+    .divination-loader-text {
+      margin-top: 20px;
+      font-family: Georgia, 'Times New Roman', 'Noto Serif SC', 'STSong', 'SimSun', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', serif;
+      font-size: 14px;
+      color: var(--primary-400);
+      letter-spacing: 4px;
+      opacity: 0.8;
+    }
+
+    .divination-skip {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      color: rgba(167, 139, 250, 0.7);
+      background: rgba(167, 139, 250, 0.1);
+      border: 1px solid rgba(167, 139, 250, 0.25);
+      border-radius: 20px;
+      padding: 8px 28px;
+      cursor: pointer;
+      z-index: 185;
+      letter-spacing: 2px;
+      font-family: Georgia, 'Times New Roman', 'Noto Serif SC', 'STSong', 'SimSun', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', serif;
+      transition: all 0.3s var(--ease-out);
+      pointer-events: auto;
+    }
+
+    .divination-skip:hover {
+      background: rgba(167, 139, 250, 0.2);
+      border-color: rgba(167, 139, 250, 0.5);
+      color: rgba(167, 139, 250, 1);
+    }
+
+    /* ============================================================
+       Background Layer
+       ============================================================ */
+    .bg-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .bg-image,
+    .bg-loop {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      transition: opacity 1s var(--ease-out);
+    }
+
+    .bg-loop {
+      opacity: 0;
+    }
+
+    /* ============================================================
+       Petals
+       ============================================================ */
+    .petals-container {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .petal {
+      position: absolute;
+      width: 7px;
+      height: 7px;
+      background: var(--primary-400);
+      border-radius: 50% 0 50% 50%;
+      opacity: 0;
+      animation: petal-fall linear infinite;
+    }
+
+    .petal:nth-child(1) { left: 8%; animation-duration: 10s; animation-delay: 0s; }
+    .petal:nth-child(2) { left: 22%; animation-duration: 12s; animation-delay: 1.5s; }
+    .petal:nth-child(3) { left: 38%; animation-duration: 9s; animation-delay: 0.8s; }
+    .petal:nth-child(4) { left: 55%; animation-duration: 11s; animation-delay: 2.2s; }
+    .petal:nth-child(5) { left: 72%; animation-duration: 13s; animation-delay: 0.3s; }
+    .petal:nth-child(6) { left: 88%; animation-duration: 10s; animation-delay: 3s; }
+    .petal:nth-child(7) { left: 16%; animation-duration: 11s; animation-delay: 4s; }
+    .petal:nth-child(8) { left: 62%; animation-duration: 12s; animation-delay: 2.5s; }
+    .petal:nth-child(9) { left: 45%; animation-duration: 9s; animation-delay: 5s; }
+
+    @keyframes petal-fall {
+      0% { transform: translateY(-20px) rotate(0deg) translateX(0); opacity: 0; }
+      8% { opacity: 0.4; }
+      92% { opacity: 0.4; }
+      100% { transform: translateY(900px) rotate(720deg) translateX(40px); opacity: 0; }
+    }
+
+    /* ============================================================
+       Content Layer
+       ============================================================ */
+    .content-layer {
+      position: relative;
+      z-index: 150;   /* 必须高于 intro-layer(100)，否则 UI 被入场视频遮挡 */
+      height: 100%;
+      width: 100%;
+    }
+
+    /* === UI 元素初始隐藏 + 过渡 === */
+    .top-zone {
+      opacity: 0;
+      transform: translateY(-16px);
+      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    }
+
+    .wallet-section {
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px);
+      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    }
+
+    .action-section {
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px);
+      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    }
+
+    .bottom-zone {
+      opacity: 0;
+      transform: translateX(-50%) translateY(16px);
+      transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+    }
+
+    /* === UI 可见状态（依次渐入）=== */
+    .content-layer.ui-visible .top-zone {
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: 0s;
+    }
+
+    .content-layer.ui-visible .wallet-section {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      transition-delay: 0.2s;
+    }
+
+    .content-layer.ui-visible .action-section {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      transition-delay: 0.4s;
+    }
+
+    .content-layer.ui-visible .bottom-zone {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      transition-delay: 0.6s;
+    }
+
+    /* === 顶部 Logo 区域 === */
+    .top-zone {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 8px 20px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .logo-area {
+      width: 100%;
+      margin-top: 4px;
+      padding-left: 6%;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .logo-area img {
+      width: 64%;
+      max-width: 250px;
+      height: auto;
+      filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.1));
+    }
+
+    /* === 钱包卡片 === */
+    .wallet-section {
+      position: absolute;
+      left: 50%;
+      top: 66%;
+      width: 78%;
+      max-width: 300px;
+    }
+
+    .wallet-btn-wrapper {
+      width: 100%;
+      cursor: pointer;
+      transition: transform 300ms var(--ease-out);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .wallet-btn-wrapper:hover {
+      transform: translateY(-2px);
+    }
+
+    .wallet-btn-wrapper img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* === 功能按钮区 === */
+    .action-section {
+      position: absolute;
+      left: 50%;
+      top: 76%;
+      width: 78%;
+      max-width: 360px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .action-btn {
+      border: none;
+      background: none;
+      cursor: pointer;
+      padding: 0;
+      transition: transform 300ms var(--ease-out), filter 300ms;
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-lg);
+      width: 140px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-3px) scale(1.02);
+      filter: brightness(1.03);
+    }
+
+    .action-btn:active {
+      transform: translateY(-1px) scale(0.98);
+      transition-duration: 150ms;
+    }
+
+    .action-btn img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      display: block;
+    }
+
+    .btn-divination,
+    .btn-history {
+      flex: 0 0 auto;
+    }
+
+    /* === 底部文字 === */
+    .bottom-zone {
+      position: absolute;
+      bottom: 1%;
+      left: 50%;
+      width: 76%;
+      max-width: 250px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .bottom-zone img {
+      width: 100%;
+      height: auto;
+    }
+
+    /* ============================================================
+       Responsive
+       ============================================================ */
+    @media (max-height: 750px) {
+      .top-zone { padding: 6px 20px 0; }
+      .logo-area { margin-top: 2px; padding-left: 6%; }
+      .logo-area img { width: 58%; max-width: 215px; }
+      .wallet-section { top: 64%; width: 72%; max-width: 270px; }
+      .action-section { top: 74%; max-width: 320px; }
+      .action-btn { width: 124px; height: 52px; }
+      .bottom-zone { bottom: 1%; width: 70%; max-width: 220px; }
+    }
+
+    @media (max-height: 650px) {
+      .logo-area img { width: 52%; max-width: 190px; }
+      .wallet-section { top: 61%; width: 68%; max-width: 240px; }
+      .action-section { top: 71%; max-width: 290px; }
+      .action-btn { width: 112px; height: 47px; }
+      .bottom-zone { bottom: 0.5%; width: 66%; max-width: 200px; }
+    }
+
+    /* Ripple */
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.35);
+      transform: scale(0);
+      animation: ripple-spread 0.6s ease-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes ripple-spread {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .petal { animation: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-frame">
+
+    <!-- 加载画面 -->
+    <div class="loading-layer" id="loadingLayer">
+      <div class="loading-ring">
+        <div class="loading-ring-outer"></div>
+        <div class="loading-ring-middle"></div>
+        <div class="loading-ring-inner">
+          <div class="loading-dot"></div>
+        </div>
+      </div>
+      <div class="loading-title">神 谕 降 临</div>
+      <div class="loading-sub">Daily Oracle</div>
+      <div class="loading-dots-row">
+        <span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+
+    <!-- 入场动画层 -->
+    <div class="intro-layer" id="introLayer">
+      <video id="introVideo" src="素材/入场动画.mp4" playsinline preload="auto"></video>
+    </div>
+
+    <!-- 求卦过程动画层 -->
+    <div class="divination-layer" id="divinationLayer">
+      <div class="divination-loader" id="divinationLoader">
+        <div class="loading-ring">
+          <div class="loading-ring-outer"></div>
+          <div class="loading-ring-middle"></div>
+          <div class="loading-ring-inner">
+            <div class="loading-dot"></div>
+          </div>
+        </div>
+        <div class="divination-loader-text">卦 象 凝 现</div>
+      </div>
+      <video id="divinationVideo" src="素材/算卦过程.mp4" playsinline preload="none"></video>
+      <button class="divination-skip" id="divinationSkip" onclick="skipDivination()">跳过 · 查看结果</button>
+    </div>
+
+    <!-- 背景层 -->
+    <div class="bg-layer">
+      <img class="bg-image" id="bgImage" src="素材/静态背景图.png" alt="水墨山水背景" loading="lazy" decoding="async">
+      <video class="bg-loop" id="bgLoop" src="素材/循环背景.mp4" muted loop playsinline preload="metadata"></video>
+      <div class="petals-container">
+        <div class="petal"></div>
+        <div class="petal"></div>
+        <div class="petal"></div>
+        <div class="petal"></div>
+        <div class="petal"></div>
+        <div class="petal"></div>
+        <div class="petal"></div>
+        <div class="petal"></div>
+        <div class="petal"></div>
+      </div>
+    </div>
+
+    <!-- UI 内容层 -->
+    <div class="content-layer" id="contentLayer">
+
+      <div class="top-zone">
+        <div class="logo-area">
+          <img src="素材/背景logo.png" alt="Daily Oracle 每日一卦·链上存证" fetchpriority="high">
+        </div>
+      </div>
+
+      <div class="wallet-section">
+        <div class="wallet-btn-wrapper" onclick="handleConnect(event)">
+          <img src="素材/钱包绑定.png" alt="连接 OKX 钱包">
+        </div>
+        <div style="text-align:center;margin-top:4px;font-size:10px;color:rgba(255,255,255,0.4);">不连钱包也能算卦 · 存证才需上链</div>
+      </div>
+
+      <div class="action-section">
+        <button class="action-btn btn-divination" onclick="handleDivination(event)" aria-label="今日求卦">
+          <img src="素材/算卦.png" alt="今日求卦">
+        </button>
+        <button class="action-btn btn-history" onclick="handleHistory(event)" aria-label="历史卦象">
+          <img src="素材/历史.png" alt="历史卦象">
+        </button>
+      </div>
+
+      <div class="bottom-zone">
+        <img src="素材/背景底部文字.png" alt="卦象启示未来，链上见证当下" loading="lazy" decoding="async">
+      </div>
+
+      <!-- 版本水印 -->
+      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v21 · divination-video-update</div>
+
+    </div>
+  </div>
+
+  <script src="oracle-core.js"></script>
+  <script>
+    (function() {
+      // === 检查是否从子页面返回（跳过入场动画）===
+      var isReturning = sessionStorage.getItem('oracle_visited') === 'true';
+      // 标记延后到入场真正结束后才设，防止视频加载超时导致"首次访问"也跳过
+      // sessionStorage.setItem('oracle_visited', 'true');
+
+      var loadingLayer = document.getElementById('loadingLayer');
+      var introVideo = document.getElementById('introVideo');
+      var introLayer = document.getElementById('introLayer');
+      var contentLayer = document.getElementById('contentLayer');
+      var bgLoop = document.getElementById('bgLoop');
+      var bgImage = document.getElementById('bgImage');
+      var uiShown = false;
+      var introEnded = false;
+      var videoReady = false;
+      var loadTimerDone = false;
+      var introDuration = 0;
+      var LOAD_MIN_TIME = 1800;
+      var UI_FADE_OFFSET = 5;    // 入场倒数 5 秒时 UI 渐入
+      var uiFadeTimer = null;    // setTimeout 句柄
+
+      // === 延迟预加载算卦视频（UI 可见后后台静默加载，用户点按钮时大概率已缓存）===
+      var divinationVideo = document.getElementById('divinationVideo');
+      var divinationPreloaded = false;
+      function preloadDivinationVideo() {
+        if (divinationPreloaded) return;
+        divinationPreloaded = true;
+        // 延迟 2s 让循环背景先启动，不争抢带宽
+        setTimeout(function() {
+          console.log('[Oracle] 开始后台预加载算卦视频');
+          divinationVideo.load();
+        }, 2000);
+      }
+
+      if (isReturning) {
+        // 从子页面返回 — 跳过加载和入场动画，直接进入最终状态
+        console.log('[Oracle] 从子页面返回，跳过入场动画');
+        loadingLayer.classList.add('hidden');
+        introLayer.classList.add('hidden');
+        contentLayer.classList.add('ui-visible');
+        bgLoop.play().then(function() {
+          bgLoop.style.opacity = '1';
+          bgImage.style.opacity = '0';
+        }).catch(function(e) {
+          console.warn('[Oracle] 循环背景播放失败', e);
+        });
+        preloadDivinationVideo();
+      } else {
+
+      // --- 获取入场视频时长 ---
+      introVideo.addEventListener('loadedmetadata', function() {
+        introDuration = introVideo.duration;
+        console.log('[Oracle] 入场视频时长: ' + introDuration.toFixed(2) + 's');
+      });
+
+      // --- 步骤 1：等待入场视频准备好 + 最小加载时间 ---
+      introVideo.addEventListener('canplaythrough', function() {
+        if (videoReady) return;
+        videoReady = true;
+        console.log('[Oracle] 入场视频准备就绪');
+        tryFinishLoading();
+      });
+
+      setTimeout(function() {
+        if (!videoReady) {
+          videoReady = true;
+          console.warn('[Oracle] 加载超时，强制进入');
+        }
+        tryFinishLoading();
+      }, 5000);
+
+      setTimeout(function() {
+        loadTimerDone = true;
+        tryFinishLoading();
+      }, LOAD_MIN_TIME);
+
+      function tryFinishLoading() {
+        if (!videoReady || !loadTimerDone) return;
+        console.log('[Oracle] 加载完成，进入入场动画');
+        loadingLayer.classList.add('hidden');
+        startIntro();
+      }
+
+      // --- 步骤 2：播放入场动画 ---
+      function startIntro() {
+        // 先尝试有声播放（用户可能已有交互）
+        introVideo.muted = false;
+        introVideo.volume = 1;
+        var playPromise = introVideo.play();
+
+        if (playPromise && typeof playPromise.then === 'function') {
+          playPromise.then(function() {
+            console.log('[Oracle] 入场动画播放中（有声）');
+            scheduleUiFadeIn();
+          }).catch(function(e) {
+            // 有声被浏览器拦截 → 静音重试（浏览器允许静音自动播放）
+            console.warn('[Oracle] 有声自动播放被拦截，静音重试', e);
+            introVideo.muted = true;
+            introVideo.play().then(function() {
+              console.log('[Oracle] 入场动画播放中（静音）');
+              scheduleUiFadeIn();
+            }).catch(function(e2) {
+              // 静音也播不了 → 跳过
+              console.warn('[Oracle] 静音播放也失败，跳过入场', e2);
+              skipIntro();
+            });
+          });
+        } else {
+          // 旧浏览器不支持 promise，使用 timeupdate 兜底
+          scheduleUiFadeIn();
+        }
+      }
+
+      // --- 核心：基于 setTimeout 精确控制 UI 渐入 ---
+      function scheduleUiFadeIn() {
+        // 优先用 loadedmetadata 拿到的实际时长
+        var dur = introDuration || introVideo.duration || 0;
+        if (dur > 0 && dur > UI_FADE_OFFSET) {
+          var delay = (dur - UI_FADE_OFFSET) * 1000;
+          console.log('[Oracle] 已安排 UI 渐入定时器: ' + delay.toFixed(0) + 'ms 后触发 (时长=' + dur.toFixed(2) + 's)');
+          uiFadeTimer = setTimeout(function() {
+            if (!uiShown) {
+              uiShown = true;
+              contentLayer.classList.add('ui-visible');
+              console.log('[Oracle] UI 开始渐入 (timer)');
+            }
+          }, delay);
+        } else {
+          // 降级：仍然用 timeupdate
+          console.warn('[Oracle] 视频时长未知，使用 timeupdate 兜底');
+        }
+      }
+
+      // --- timeupdate 兜底（防止 setTimeout 因为某些原因没触发）---
+      introVideo.addEventListener('timeupdate', function() {
+        if (!uiShown && introVideo.duration > 0) {
+          var remaining = introVideo.duration - introVideo.currentTime;
+          if (remaining <= UI_FADE_OFFSET) {
+            uiShown = true;
+            contentLayer.classList.add('ui-visible');
+            console.log('[Oracle] UI 开始渐入 (timeupdate 兜底), 剩余 ' + remaining.toFixed(2) + 's');
+          }
+        }
+      });
+
+      // --- 步骤 3：入场结束 → 切换到循环背景 ---
+      introVideo.addEventListener('ended', function() {
+        if (introEnded) return;
+        introEnded = true;
+        sessionStorage.setItem('oracle_visited', 'true');
+        console.log('[Oracle] 入场结束，切换循环背景');
+        hideIntroAndPlayLoop();
+      });
+
+      function hideIntroAndPlayLoop() {
+        // 确保 UI 已显示（如果之前没触发的话）
+        if (!uiShown) {
+          uiShown = true;
+          contentLayer.classList.add('ui-visible');
+          console.warn('[Oracle] UI 在入场结束时兜底显示');
+        }
+        introLayer.classList.add('hidden');
+        setTimeout(function() {
+          bgLoop.play().then(function() {
+            bgLoop.style.opacity = '1';
+            bgImage.style.opacity = '0';
+            console.log('[Oracle] 循环背景已启动');
+          }).catch(function(e) {
+            console.warn('[Oracle] 循环背景播放失败', e);
+          });
+        }, 400);
+        preloadDivinationVideo();
+      }
+
+      function skipIntro() {
+        if (uiFadeTimer) { clearTimeout(uiFadeTimer); uiFadeTimer = null; }
+        introEnded = true;
+        sessionStorage.setItem('oracle_visited', 'true');
+        uiShown = true;
+        loadingLayer.classList.add('hidden');
+        introLayer.classList.add('hidden');
+        contentLayer.classList.add('ui-visible');
+        bgLoop.play().then(function() {
+          bgLoop.style.opacity = '1';
+          bgImage.style.opacity = '0';
+        }).catch(function(e) {
+          console.warn('[Oracle] 循环背景播放失败', e);
+        });
+        preloadDivinationVideo();
+      }
+
+      setTimeout(function() {
+        if (!uiShown) {
+          console.warn('[Oracle] 入场超时（30s），跳过');
+          skipIntro();
+        }
+      }, 30000);
+      } // end else（首次访问的入场动画流程）
+
+      // === 交互 ===
+
+      function createRipple(e) {
+        var btn = e.currentTarget;
+        var rect = btn.getBoundingClientRect();
+        var ripple = document.createElement('span');
+        var size = Math.max(rect.width, rect.height) * 1.2;
+        var x = e.clientX - rect.left - size / 2;
+        var y = e.clientY - rect.top - size / 2;
+        ripple.style.cssText = 'width:' + size + 'px;height:' + size + 'px;left:' + x + 'px;top:' + y + 'px;';
+        ripple.classList.add('ripple');
+        btn.style.position = 'relative';
+        btn.style.overflow = 'hidden';
+        btn.appendChild(ripple);
+        setTimeout(function() { ripple.remove(); }, 600);
+      }
+
+      var currentAccount = null;
+
+      window.handleConnect = async function(e) {
+        createRipple(e);
+        var addr = await connectWallet();
+        if (addr) {
+          currentAccount = addr;
+          var short = addr.slice(0, 6) + '...' + addr.slice(-4);
+          var walletImg = document.querySelector('.wallet-btn-wrapper img');
+          walletImg.alt = '已连接: ' + short;
+          console.log('[Oracle] 钱包已连接:', short);
+        }
+      };
+
+      window.handleDivination = function(e) {
+        createRipple(e);
+        // 先执行算卦计算（结果存入临时变量）
+        var result = castHexagram();
+        var record = saveToHistory(result);
+        var params = new URLSearchParams({
+          id: result.primaryId,
+          name: result.primaryHex.name,
+          fortune: result.primaryHex.fortune,
+          changing: result.changingLines.join(','),
+          changedId: result.changedId || '',
+          changedName: result.changedHex ? result.changedHex.name : '',
+          recordId: record.id
+        });
+        var resultUrl = 'result.html?' + params.toString();
+
+        // 显示求卦过程动画
+        var divinationLayer = document.getElementById('divinationLayer');
+        var divinationLoader = document.getElementById('divinationLoader');
+        divinationLayer.classList.add('active');
+
+        // 视频跳转锁 + 真实时长
+        var divinationDone = false;
+        var videoDuration = 0;
+
+        // 隐藏加载动画
+        function hideLoader() {
+          divinationLoader.classList.add('hidden');
+        }
+        // 显示加载动画
+        function showLoader() {
+          divinationLoader.classList.remove('hidden');
+        }
+
+        function goToResult() {
+          if (divinationDone) return;
+          divinationDone = true;
+          divinationVideo.pause();
+          // 遮罩不隐藏，直接跳转，防止首页 UI 在间隙闪现
+          window.location.href = resultUrl;
+        }
+
+        // 正常播完才跳转（双重校验：防止 Chrome 在 currentTime 跳转时误发 ended）
+        divinationVideo.addEventListener('ended', function() {
+          // 必须是真正播完：currentTime 接近 duration（容差 0.5s）
+          if (divinationVideo.currentTime >= divinationVideo.duration - 0.5) {
+            goToResult();
+          }
+          // 否则是假 ended，忽略，让视频继续
+        });
+
+        // 视频开始播放时隐藏加载动画
+        divinationVideo.addEventListener('playing', function() {
+          hideLoader();
+        });
+        // 视频缓冲时显示加载动画
+        divinationVideo.addEventListener('waiting', function() {
+          if (!divinationDone) showLoader();
+        });
+
+        // 暴露跳过函数
+        window.skipDivination = function() { goToResult(); };
+
+        // 等待视频元数据就绪后再播放（避免 duration=NaN 导致校验失败）
+        function startDivinationPlayback() {
+          videoDuration = divinationVideo.duration || 0;
+          divinationVideo.currentTime = 0;
+          divinationVideo.muted = false;
+          divinationVideo.volume = 1;
+
+          divinationVideo.play().then(function() {
+            hideLoader();
+          }).catch(function() {
+            // 有声被阻 → 静音重试
+            divinationVideo.muted = true;
+            divinationVideo.play().then(function() {
+              hideLoader();
+            }).catch(function() {
+              // 完全不能播 → 直接走
+              goToResult();
+            });
+          });
+
+          // 兜底超时 = 视频真实时长 + 3s（不再写死 8s）
+          var timeoutMs = ((videoDuration > 1 ? videoDuration : 8) + 3) * 1000;
+          setTimeout(function() {
+            if (!divinationDone) {
+              console.warn('[Oracle] 求卦过程超时（' + (timeoutMs / 1000).toFixed(0) + 's），强制跳转');
+              goToResult();
+            }
+          }, timeoutMs);
+        }
+
+        if (divinationVideo.readyState >= 2) {
+          // 元数据已加载（可能预加载已缓存）
+          console.log('[Oracle] 算卦视频已缓存，直接播放');
+          startDivinationPlayback();
+        } else {
+          console.log('[Oracle] 算卦视频未缓存，等待加载...');
+          divinationVideo.addEventListener('loadedmetadata', startDivinationPlayback, { once: true });
+          // 极端降级：3s 后元数据还没来也强制播
+          setTimeout(function() {
+            if (!divinationDone && !videoDuration) {
+              console.warn('[Oracle] 元数据加载超时，直接播放');
+              startDivinationPlayback();
+            }
+          }, 3000);
+        }
+      };
+
+      window.handleHistory = function(e) {
+        createRipple(e);
+        window.location.href = 'history.html';
+      };
+
+    })();
+  </script>
+</body>
+</html>

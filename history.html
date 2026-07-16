@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta name="theme-color" content="#7C5CC8">
+  <meta name="description" content="历史卦象记录 — Daily Oracle 每日一卦·链上存证">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta property="og:title" content="历史卦象 - Daily Oracle 每日一卦·链上存证">
+  <meta property="og:description" content="历史卦象记录 — 基于易经六十四卦的每日求卦 DApp">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="历史卦象 - Daily Oracle">
+  <meta name="twitter:description" content="历史卦象记录 — Daily Oracle 每日一卦·链上存证">
+  <link rel="manifest" href="manifest.json">
+  <title>历史卦象 - Daily Oracle</title>
+  <!-- Fonts: 使用系统本地字体，避免 Google Fonts 在国内被墙导致页面渲染阻塞 -->
+  <style>
+    :root {
+      --primary: #7C5CC8;
+      --primary-dark: #6B4FB5;
+      --primary-light: #9B7FD9;
+      --primary-50: #f5f3ff;
+      --primary-100: #ede9fe;
+      --accent-red: #C8553D;
+      --text-dark: #1a1a1a;
+      --text-medium: #4a4a4a;
+      --text-light: #888888;
+      --paper-bg: #f0eeeb;
+      --paper-warm: #e8e6e3;
+      --surface: rgba(255, 255, 255, 0.95);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .app-frame {
+      width: 100%;
+      max-width: 430px;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+      background: var(--paper-warm);
+    }
+
+    @media (min-width: 431px) {
+      .app-frame {
+        height: 850px;
+        border-radius: 40px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25), 0 0 0 8px rgba(255, 255, 255, 0.05);
+      }
+    }
+
+    .bg-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: linear-gradient(180deg, rgba(240,238,235,0.5) 0%, var(--paper-warm) 40%);
+    }
+
+    .bg-watermark {
+      position: absolute;
+      top: 5%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 250px;
+      height: 250px;
+      opacity: 0.04;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="%237C5CC8" stroke-width="2"/><path d="M50 10 A40 40 0 0 1 50 90 A20 20 0 0 0 50 50 A20 20 0 0 1 50 10Z" fill="%237C5CC8"/></svg>');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    .content-layer {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 20px 16px;
+      background: linear-gradient(180deg, var(--paper-warm) 0%, transparent 100%);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .back-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-sm);
+      transition: all 0.3s ease;
+    }
+    .back-btn:hover { transform: translateX(-2px); box-shadow: var(--shadow-md); }
+    .back-btn svg { width: 20px; height: 20px; stroke: var(--text-dark); }
+
+    .header-title { font-family: Georgia, 'Times New Roman', 'Noto Serif SC', 'STSong', 'SimSun', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', serif; font-size: 18px; font-weight: 600; color: var(--text-dark); }
+    .header-right { width: 40px; }
+
+    /* Stats */
+    .stats-bar { display: flex; gap: 12px; padding: 0 20px 16px; }
+    .stat-card {
+      flex: 1; background: var(--surface); border-radius: var(--radius-lg); padding: 16px;
+      text-align: center; box-shadow: var(--shadow-sm); transition: all 0.3s ease;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .stat-value { font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-weight: 700; color: var(--primary); line-height: 1; }
+    .stat-label { font-size: 12px; color: var(--text-light); margin-top: 6px; letter-spacing: 1px; }
+
+    /* List */
+    .list-container { flex: 1; overflow-y: auto; padding: 0 20px 20px; scrollbar-width: none; }
+    .list-container::-webkit-scrollbar { display: none; }
+
+    .history-item {
+      background: var(--surface); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px;
+      box-shadow: var(--shadow-sm); cursor: pointer; transition: all 0.3s ease;
+      position: relative; overflow: hidden;
+    }
+    .history-item::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: linear-gradient(to bottom, var(--primary), var(--primary-light)); opacity: 0; transition: opacity 0.3s ease;
+    }
+    .history-item:hover { transform: translateX(4px); box-shadow: var(--shadow-md); }
+    .history-item:hover::before { opacity: 1; }
+
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .history-gua-name { font-family: Georgia, 'Times New Roman', 'Noto Serif SC', 'STSong', 'SimSun', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', serif; font-size: 18px; font-weight: 600; color: var(--text-dark); }
+    .history-gua-badge { padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+    .badge-shang { background: #e8f5e9; color: #2e7d32; }
+    .badge-zhong { background: #fff3e0; color: #e65100; }
+    .badge-xia { background: #ffebee; color: #c62828; }
+
+    .history-meta { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-light); }
+    .history-meta-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--text-light); opacity: 0.5; }
+    .history-summary { font-size: 14px; color: var(--text-medium); margin-top: 8px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .history-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.04); }
+    .history-chain { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--primary); opacity: 0.7; }
+    .history-chain.not-attested { color: var(--text-light); }
+    .history-arrow { width: 20px; height: 20px; stroke: var(--text-light); transition: transform 0.3s ease; }
+    .history-item:hover .history-arrow { transform: translateX(4px); }
+
+    /* Empty State */
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center; }
+    .empty-icon { width: 80px; height: 80px; margin-bottom: 20px; opacity: 0.3; }
+    .empty-title { font-family: Georgia, 'Times New Roman', 'Noto Serif SC', 'STSong', 'SimSun', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', serif; font-size: 18px; color: var(--text-dark); margin-bottom: 8px; }
+    .empty-desc { font-size: 14px; color: var(--text-light); line-height: 1.6; }
+    .empty-btn {
+      margin-top: 20px; padding: 12px 28px; border-radius: var(--radius-lg); border: none;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white;
+      font-family: Georgia, 'Times New Roman', 'Noto Serif SC', 'STSong', 'SimSun', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', serif; font-size: 15px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(124, 92, 200, 0.3); transition: all 0.3s ease;
+    }
+    .empty-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(124, 92, 200, 0.4); }
+
+    /* Animations */
+    @keyframes fade-in-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slide-in-left { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: translateX(0); } }
+    .anim-fade-up { animation: fade-in-up 0.5s var(--ease-out) forwards; opacity: 0; }
+    .anim-slide-in { animation: slide-in-left 0.5s var(--ease-out) forwards; opacity: 0; }
+    .delay-1 { animation-delay: 0.05s; }
+    .delay-2 { animation-delay: 0.1s; }
+    .delay-3 { animation-delay: 0.15s; }
+    .delay-4 { animation-delay: 0.2s; }
+    .delay-5 { animation-delay: 0.25s; }
+    .delay-6 { animation-delay: 0.3s; }
+
+    /* Month Divider */
+    .month-divider { display: flex; align-items: center; gap: 12px; padding: 16px 0 12px; margin: 0 4px; }
+    .month-divider::before, .month-divider::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent); }
+    .month-label { font-size: 12px; color: var(--text-light); letter-spacing: 2px; white-space: nowrap; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--text-dark); color: white; padding: 12px 24px; border-radius: 24px;
+      font-size: 14px; z-index: 1000; opacity: 0; transition: all 0.4s var(--ease-out);
+      pointer-events: none; white-space: nowrap; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="app-frame">
+    <div class="bg-layer"><div class="bg-watermark"></div></div>
+
+    <div class="content-layer">
+      <!-- Header -->
+      <div class="header">
+        <button class="back-btn" onclick="window.location.href='index.html'" aria-label="返回">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <div class="header-title">历史卦象</div>
+        <div class="header-right"></div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-bar" id="statsBar">
+        <div class="stat-card anim-fade-up delay-1">
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-label">总求卦</div>
+        </div>
+        <div class="stat-card anim-fade-up delay-2">
+          <div class="stat-value" id="statAttested">0</div>
+          <div class="stat-label">已存证</div>
+        </div>
+        <div class="stat-card anim-fade-up delay-3">
+          <div class="stat-value" id="statGood">0</div>
+          <div class="stat-label">上签</div>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div class="list-container" id="listContainer">
+        <!-- Empty state or dynamic items will be rendered here -->
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="oracle-core.js"></script>
+  <script>
+    // ============================================================
+    // Read data from localStorage
+    // ============================================================
+    const history = getHistory();
+
+    function showToast(text) {
+      const t = document.getElementById('toast');
+      t.textContent = text;
+      t.className = 'toast';
+      requestAnimationFrame(() => t.classList.add('show'));
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function getFortuneBadgeClass(fortune) {
+      if (fortune.includes('上')) return 'badge-shang';
+      if (fortune.includes('下')) return 'badge-xia';
+      return 'badge-zhong';
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const m = d.getMonth() + 1;
+      const day = d.getDate();
+      return m + '.' + day;
+    }
+
+    function formatTime(ts) {
+      if (!ts) return '';
+      const d = new Date(ts);
+      return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    }
+
+    function getLunarMonth(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const year = d.getFullYear();
+      const gan = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+      const zhi = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+      const ganIdx = (year - 4) % 10;
+      const zhiIdx = (year - 4) % 12;
+      const cnMonths = ['正','二','三','四','五','六','七','八','九','十','冬','腊'];
+      const m = d.getMonth();
+      return gan[ganIdx] + zhi[zhiIdx] + '年 ' + cnMonths[m] + '月';
+    }
+
+    // ============================================================
+    // Compute Stats
+    // ============================================================
+    function renderStats() {
+      const total = history.length;
+      const attested = history.filter(r => r.txHash).length;
+      const good = history.filter(r => r.fortune && r.fortune.includes('上')).length;
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statAttested').textContent = attested;
+      document.getElementById('statGood').textContent = good;
+    }
+
+    // ============================================================
+    // Render Empty State
+    // ============================================================
+    function renderEmpty() {
+      const container = document.getElementById('listContainer');
+      container.innerHTML =
+        '<div class="empty-state">' +
+          '<svg class="empty-icon" viewBox="0 0 100 100" fill="none" stroke="var(--text-light)" stroke-width="1.5">' +
+            '<circle cx="50" cy="50" r="40"/>' +
+            '<path d="M50 15 A35 35 0 0 1 50 85 A17.5 17.5 0 0 0 50 50 A17.5 17.5 0 0 1 50 15Z" fill="var(--text-light)" opacity="0.2"/>' +
+          '</svg>' +
+          '<div class="empty-title">尚无求卦记录</div>' +
+          '<div class="empty-desc">点击首页「今日求卦」按钮<br>获取你的每日卦象指引</div>' +
+          '<button class="empty-btn" onclick="window.location.href=\'index.html\'">去求卦</button>' +
+        '</div>';
+    }
+
+    // ============================================================
+    // Render History List
+    // ============================================================
+    function renderList() {
+      if (history.length === 0) {
+        renderEmpty();
+        return;
+      }
+
+      const container = document.getElementById('listContainer');
+      let html = '';
+      let currentMonth = '';
+      let delayIdx = 3;
+
+      history.forEach((item, idx) => {
+        const monthKey = item.date ? item.date.slice(0, 7) : '';
+        const lunarMonth = item.date ? getLunarMonth(item.date) : '';
+
+        if (monthKey && monthKey !== currentMonth) {
+          currentMonth = monthKey;
+          html += '<div class="month-divider anim-fade-up delay-' + Math.min(delayIdx, 6) + '"><span class="month-label">' + lunarMonth + '</span></div>';
+        }
+
+        const badgeClass = getFortuneBadgeClass(item.fortune || '');
+        const isAttested = item.txHash ? true : false;
+        const chainDisplay = isAttested
+          ? '<div class="history-chain">' + item.txHash.slice(0, 6) + '…' + item.txHash.slice(-4) + '</div>'
+          : '<div class="history-chain not-attested">--</div>';
+        const attestedLabel = isAttested ? '<span style="color: var(--primary);">已存证</span>' : '<span style="color: var(--text-light);">未存证</span>';
+
+        const animClass = 'anim-slide-in delay-' + Math.min(delayIdx, 6);
+        delayIdx++;
+
+        html +=
+          '<div class="history-item ' + animClass + '" onclick="viewDetail(' + item.id + ')" data-id="' + item.id + '">' +
+            '<div class="history-header">' +
+              '<div class="history-gua-name">' + (item.primaryName || '--') + '</div>' +
+              '<div class="history-gua-badge ' + badgeClass + '">' + (item.fortune || '--') + '卦</div>' +
+            '</div>' +
+            '<div class="history-meta">' +
+              '<span>' + formatDate(item.date) + '</span>' +
+              '<span class="history-meta-dot"></span>' +
+              '<span>' + formatTime(item.timestamp) + '</span>' +
+              '<span class="history-meta-dot"></span>' +
+              attestedLabel +
+            '</div>' +
+            '<div class="history-summary">' + (item.reading || '') + '</div>' +
+            '<div class="history-footer">' + chainDisplay +
+              '<svg class="history-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+                '<path d="M9 18l6-6-6-6"/>' +
+              '</svg>' +
+            '</div>' +
+          '</div>';
+      });
+
+      html += '<div style="height: 20px;"></div>';
+      container.innerHTML = html;
+    }
+
+    // ============================================================
+    // View Detail
+    // ============================================================
+    function viewDetail(id) {
+      const item = history.find(r => r.id === id);
+      if (!item) { showToast('记录未找到'); return; }
+
+      const params = new URLSearchParams({
+        id: item.primaryId,
+        name: item.primaryName || '',
+        fortune: item.fortune || '',
+        changing: (item.changingLines || []).join(','),
+        changedId: item.changedId || '',
+        changedName: item.changedName || '',
+        recordId: item.id
+      });
+      window.location.href = 'result.html?' + params.toString();
+    }
+
+    // ============================================================
+    // Initialize
+    // ============================================================
+    renderStats();
+    renderList();
+  </script>
+</body>
+</html>
