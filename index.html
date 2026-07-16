@@ -723,7 +723,7 @@
       </div>
 
       <!-- 版本水印 -->
-      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v25 · divination-buffer-fix</div>
+      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v26 · divination-fullbuffer</div>
 
     </div>
   </div>
@@ -1054,13 +1054,13 @@
           if (!divinationDone) showLoader();
         });
 
-        // === 检查视频是否已缓冲足够数据 ===
+        // === 检查视频是否已几乎完全缓冲（差 0.5 秒以内）===
         function hasEnoughBuffer() {
           var dur = divinationVideo.duration || 0;
           if (divinationVideo.readyState >= 4) return true;  // HAVE_ENOUGH_DATA
           if (dur > 0 && divinationVideo.buffered.length > 0) {
             var bufEnd = divinationVideo.buffered.end(divinationVideo.buffered.length - 1);
-            return bufEnd >= dur * 0.8 || bufEnd >= 5;  // 80% 或 5 秒以上
+            return bufEnd >= dur - 0.5;  // 几乎完全缓冲
           }
           return false;
         }
@@ -1092,13 +1092,19 @@
             });
           }
 
-          // === 卡顿检测：currentTime 不前进则视为卡顿 ===
+          // === 卡顿检测 + 结尾检测 ===
           function startStallDetection() {
             var lastTime = divinationVideo.currentTime;
             var stallStart = 0;
             divinationVideo.addEventListener('timeupdate', function stallCheck() {
               if (divinationDone) {
                 divinationVideo.removeEventListener('timeupdate', stallCheck);
+                return;
+              }
+              // 结尾检测：currentTime 接近 duration → 跳转（部分浏览器 ended 不触发）
+              if (videoDuration > 0 && divinationVideo.currentTime >= videoDuration - 0.3) {
+                console.log('[Oracle] 视频接近结尾，跳转结果页');
+                goToResult();
                 return;
               }
               if (divinationVideo.currentTime > lastTime) {
@@ -1113,13 +1119,13 @@
                 clearInterval(stallTimer);
                 return;
               }
-              // currentTime 没变且非暂停 → 卡顿
-              if (divinationVideo.currentTime === lastTime && !divinationVideo.paused) {
+              // currentTime 没变 → 卡顿（不依赖 paused，某些浏览器卡顿时 paused=true）
+              if (divinationVideo.currentTime === lastTime) {
                 if (stallStart === 0) {
                   stallStart = Date.now();
                   showLoader();
-                } else if (Date.now() - stallStart > 4000) {
-                  console.warn('[Oracle] 视频卡顿超过4秒，强制跳转结果页');
+                } else if (Date.now() - stallStart > 3000) {
+                  console.warn('[Oracle] 视频卡顿超过3秒，强制跳转结果页');
                   clearInterval(stallTimer);
                   goToResult();
                 }
@@ -1129,17 +1135,21 @@
             }, 1000);
           }
 
-          // 缓冲足够 → 立即播放；不足 → 等待缓冲
+          // 缓冲足够 → 立即播放；不足 → 等待完全缓冲
           if (hasEnoughBuffer()) {
-            console.log('[Oracle] 视频已缓冲足够，直接播放');
+            console.log('[Oracle] 视频已完全缓冲，直接播放');
             attemptPlay();
           } else {
-            console.log('[Oracle] 视频缓冲不足，等待缓冲...');
+            console.log('[Oracle] 视频缓冲不足，等待完全缓冲...');
             showLoader();
+            // 更新加载文字让用户知道在缓冲
+            var loaderText = divinationLoader.querySelector('.divination-loader-text');
+            var originalText = loaderText ? loaderText.textContent : '';
 
             function onReady() {
               if (divinationDone) return;
-              console.log('[Oracle] 视频缓冲就绪，开始播放');
+              if (loaderText) loaderText.textContent = originalText;
+              console.log('[Oracle] 视频完全缓冲就绪，开始播放');
               attemptPlay();
             }
             divinationVideo.addEventListener('canplaythrough', onReady, { once: true });
@@ -1158,15 +1168,15 @@
             }
             divinationVideo.addEventListener('progress', onProgress);
 
-            // 6 秒后缓冲还不够 → 直接尝试播放（边播边缓冲）
+            // 15 秒后还没完全缓冲 → 不播了，直接跳结果页（避免长时间卡在加载）
             setTimeout(function() {
               if (!divinationDone) {
                 divinationVideo.removeEventListener('canplaythrough', onReady);
                 divinationVideo.removeEventListener('progress', onProgress);
-                console.warn('[Oracle] 缓冲等待超时，尝试直接播放');
-                attemptPlay();
+                console.warn('[Oracle] 缓冲 15 秒仍未完成，跳过视频直接跳转结果页');
+                goToResult();
               }
-            }, 6000);
+            }, 15000);
           }
 
           // 播放终极超时 = 视频时长 + 5s（未知则 20s）
@@ -1194,7 +1204,7 @@
           }, 4000);
         }
 
-        // === 绝对安全网：25s 后无论如何必须跳到结果页 ===
+        // === 绝对安全网：30s 后无论如何必须跳到结果页 ===
         setTimeout(function() {
           if (!divinationDone) {
             console.warn('[Oracle] 绝对超时，强制跳转结果页');
