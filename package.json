@@ -1,0 +1,7 @@
+{
+  "name": "daily-oracle-asp",
+  "version": "1.0.0",
+  "description": "Daily Oracle - I Ching Divination A2MCP Service for OKX.AI Genesis Hackathon",
+  "type": "module",
+  "private": true
+}
