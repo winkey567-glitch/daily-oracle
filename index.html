@@ -672,7 +672,7 @@
         </div>
         <div class="divination-loader-text">卦 象 凝 现</div>
       </div>
-      <video id="divinationVideo" src="素材/算卦过程.mp4" playsinline preload="none"></video>
+      <video id="divinationVideo" src="素材/算卦过程.mp4" playsinline preload="metadata"></video>
       <button class="divination-skip" id="divinationSkip" onclick="skipDivination()">跳过 · 查看结果</button>
     </div>
 
@@ -723,7 +723,7 @@
       </div>
 
       <!-- 版本水印 -->
-      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v23 · audio-unlock</div>
+      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v24 · divination-robust</div>
 
     </div>
   </div>
@@ -986,113 +986,115 @@
       };
 
       window.handleDivination = function(e) {
-        createRipple(e);
-        // 先执行算卦计算（结果存入临时变量）
-        var result = castHexagram();
-        var record = saveToHistory(result);
-        var params = new URLSearchParams({
-          id: result.primaryId,
-          name: result.primaryHex.name,
-          fortune: result.primaryHex.fortune,
-          changing: result.changingLines.join(','),
-          changedId: result.changedId || '',
-          changedName: result.changedHex ? result.changedHex.name : '',
-          recordId: record.id
-        });
-        var resultUrl = 'result.html?' + params.toString();
+        try { createRipple(e); } catch(err) {}
 
-        // 显示求卦过程动画
+        // 先显示遮罩层（确保用户立刻看到反馈）
         var divinationLayer = document.getElementById('divinationLayer');
         var divinationLoader = document.getElementById('divinationLoader');
         divinationLayer.classList.add('active');
 
-        // 视频跳转锁 + 真实时长
+        // 视频跳转锁
         var divinationDone = false;
-        var videoDuration = 0;
+        var resultUrl = '';
 
-        // 隐藏加载动画
-        function hideLoader() {
-          divinationLoader.classList.add('hidden');
-        }
-        // 显示加载动画
-        function showLoader() {
-          divinationLoader.classList.remove('hidden');
-        }
-
+        // 立即设置跳过函数（哪怕后续计算出错也能跳走）
         function goToResult() {
           if (divinationDone) return;
           divinationDone = true;
-          divinationVideo.pause();
-          // 遮罩不隐藏，直接跳转，防止首页 UI 在间隙闪现
-          window.location.href = resultUrl;
+          try { divinationVideo.pause(); } catch(err) {}
+          if (resultUrl) {
+            window.location.href = resultUrl;
+          } else {
+            // 极端降级：计算完全失败，跳到默认结果
+            window.location.href = 'result.html?id=1&name=乾&fortune=5&changing=&changedId=&changedName=&recordId=';
+          }
+        }
+        window.skipDivination = goToResult;
+
+        // 执行算卦计算（包在 try-catch 中，防止 localStorage 等问题导致崩溃）
+        try {
+          var result = castHexagram();
+          var record = { id: Date.now() };
+          try { record = saveToHistory(result); } catch(err) { console.warn('[Oracle] saveToHistory 失败', err); }
+          var params = new URLSearchParams({
+            id: result.primaryId,
+            name: result.primaryHex.name,
+            fortune: result.primaryHex.fortune,
+            changing: result.changingLines.join(','),
+            changedId: result.changedId || '',
+            changedName: result.changedHex ? result.changedHex.name : '',
+            recordId: record.id
+          });
+          resultUrl = 'result.html?' + params.toString();
+        } catch(err) {
+          console.error('[Oracle] 算卦计算失败', err);
+          resultUrl = 'result.html?id=1&name=乾&fortune=5&changing=&changedId=&changedName=&recordId=';
         }
 
-        // 正常播完才跳转（双重校验：防止 Chrome 在 currentTime 跳转时误发 ended）
+        // 隐藏/显示加载动画
+        function hideLoader() { divinationLoader.classList.add('hidden'); }
+        function showLoader() { divinationLoader.classList.remove('hidden'); }
+
+        // 正常播完才跳转
         divinationVideo.addEventListener('ended', function() {
-          // 必须是真正播完：currentTime 接近 duration（容差 0.5s）
-          if (divinationVideo.currentTime >= divinationVideo.duration - 0.5) {
+          if (divinationVideo.duration > 0 && divinationVideo.currentTime >= divinationVideo.duration - 0.5) {
             goToResult();
           }
-          // 否则是假 ended，忽略，让视频继续
         });
+        divinationVideo.addEventListener('playing', function() { hideLoader(); });
+        divinationVideo.addEventListener('waiting', function() { if (!divinationDone) showLoader(); });
 
-        // 视频开始播放时隐藏加载动画
-        divinationVideo.addEventListener('playing', function() {
-          hideLoader();
-        });
-        // 视频缓冲时显示加载动画
-        divinationVideo.addEventListener('waiting', function() {
-          if (!divinationDone) showLoader();
-        });
-
-        // 暴露跳过函数
-        window.skipDivination = function() { goToResult(); };
-
-        // 等待视频元数据就绪后再播放（避免 duration=NaN 导致校验失败）
+        // 等待视频元数据就绪后再播放
         function startDivinationPlayback() {
-          videoDuration = divinationVideo.duration || 0;
-          divinationVideo.currentTime = 0;
+          var videoDuration = divinationVideo.duration || 0;
+          try { divinationVideo.currentTime = 0; } catch(err) {}
           divinationVideo.muted = false;
           divinationVideo.volume = 1;
 
+          var playStarted = false;
           divinationVideo.play().then(function() {
+            playStarted = true;
             hideLoader();
           }).catch(function() {
-            // 有声被阻 → 静音重试
             divinationVideo.muted = true;
             divinationVideo.play().then(function() {
+              playStarted = true;
               hideLoader();
             }).catch(function() {
-              // 完全不能播 → 直接走
               goToResult();
             });
           });
 
-          // 兜底超时 = 视频真实时长 + 3s（不再写死 8s）
+          // 兜底超时 = 视频真实时长 + 3s（未知则 8s）
           var timeoutMs = ((videoDuration > 1 ? videoDuration : 8) + 3) * 1000;
           setTimeout(function() {
             if (!divinationDone) {
-              console.warn('[Oracle] 求卦过程超时（' + (timeoutMs / 1000).toFixed(0) + 's），强制跳转');
+              console.warn('[Oracle] 求卦过程超时，强制跳转');
               goToResult();
             }
           }, timeoutMs);
         }
 
         if (divinationVideo.readyState >= 2) {
-          // 元数据已加载（可能预加载已缓存）
-          console.log('[Oracle] 算卦视频已缓存，直接播放');
           startDivinationPlayback();
         } else {
-          console.log('[Oracle] 算卦视频未缓存，等待加载...');
           divinationVideo.addEventListener('loadedmetadata', startDivinationPlayback, { once: true });
-          // 极端降级：3s 后元数据还没来也强制播
+          // 3s 后元数据还没来也强制播
           setTimeout(function() {
-            if (!divinationDone && !videoDuration) {
+            if (!divinationDone) {
               console.warn('[Oracle] 元数据加载超时，直接播放');
               startDivinationPlayback();
             }
           }, 3000);
         }
+
+        // === 终极安全网：无论如何 10s 后必须跳到结果页 ===
+        setTimeout(function() {
+          if (!divinationDone) {
+            console.warn('[Oracle] 终极超时，强制跳转结果页');
+            goToResult();
+          }
+        }, 10000);
       };
 
       window.handleHistory = function(e) {
