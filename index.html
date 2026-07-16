@@ -672,7 +672,7 @@
         </div>
         <div class="divination-loader-text">卦 象 凝 现</div>
       </div>
-      <video id="divinationVideo" src="素材/算卦过程.mp4" playsinline preload="metadata"></video>
+      <video id="divinationVideo" src="素材/算卦过程.mp4" playsinline preload="auto"></video>
       <button class="divination-skip" id="divinationSkip" onclick="skipDivination()">跳过 · 查看结果</button>
     </div>
 
@@ -723,7 +723,7 @@
       </div>
 
       <!-- 版本水印 -->
-      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v24 · divination-robust</div>
+      <div style="position:absolute;top:2px;right:6px;font-size:9px;color:rgba(124,92,200,0.6);z-index:50;font-family:monospace;pointer-events:none;">v25 · divination-buffer-fix</div>
 
     </div>
   </div>
@@ -1035,66 +1035,172 @@
         function hideLoader() { divinationLoader.classList.add('hidden'); }
         function showLoader() { divinationLoader.classList.remove('hidden'); }
 
-        // 正常播完才跳转
+        // === 视频事件 ===
+        // ended: 正常播完 → 跳转结果页（无需额外条件判断）
         divinationVideo.addEventListener('ended', function() {
-          if (divinationVideo.duration > 0 && divinationVideo.currentTime >= divinationVideo.duration - 0.5) {
-            goToResult();
-          }
+          console.log('[Oracle] 算卦视频播放结束');
+          goToResult();
         });
-        divinationVideo.addEventListener('playing', function() { hideLoader(); });
-        divinationVideo.addEventListener('waiting', function() { if (!divinationDone) showLoader(); });
+        // playing: 缓冲恢复/开始播放 → 隐藏加载动画
+        divinationVideo.addEventListener('playing', function() {
+          if (!divinationDone) hideLoader();
+        });
+        // waiting: 数据不足暂停 → 显示加载动画
+        divinationVideo.addEventListener('waiting', function() {
+          if (!divinationDone) showLoader();
+        });
+        // stalled: 传输停滞 → 显示加载动画
+        divinationVideo.addEventListener('stalled', function() {
+          if (!divinationDone) showLoader();
+        });
 
-        // 等待视频元数据就绪后再播放
+        // === 检查视频是否已缓冲足够数据 ===
+        function hasEnoughBuffer() {
+          var dur = divinationVideo.duration || 0;
+          if (divinationVideo.readyState >= 4) return true;  // HAVE_ENOUGH_DATA
+          if (dur > 0 && divinationVideo.buffered.length > 0) {
+            var bufEnd = divinationVideo.buffered.end(divinationVideo.buffered.length - 1);
+            return bufEnd >= dur * 0.8 || bufEnd >= 5;  // 80% 或 5 秒以上
+          }
+          return false;
+        }
+
+        // === 开始播放算卦视频 ===
         function startDivinationPlayback() {
           var videoDuration = divinationVideo.duration || 0;
           try { divinationVideo.currentTime = 0; } catch(err) {}
-          divinationVideo.muted = false;
-          divinationVideo.volume = 1;
 
-          var playStarted = false;
-          divinationVideo.play().then(function() {
-            playStarted = true;
-            hideLoader();
-          }).catch(function() {
-            divinationVideo.muted = true;
+          // 尝试播放（有声 → 静音兜底）
+          function attemptPlay() {
+            if (divinationDone) return;
+            divinationVideo.muted = false;
+            divinationVideo.volume = 1;
             divinationVideo.play().then(function() {
-              playStarted = true;
+              console.log('[Oracle] 算卦视频开始播放');
               hideLoader();
+              startStallDetection();
             }).catch(function() {
-              goToResult();
+              console.warn('[Oracle] 有声播放被拦截，静音重试');
+              divinationVideo.muted = true;
+              divinationVideo.play().then(function() {
+                hideLoader();
+                startStallDetection();
+              }).catch(function() {
+                console.warn('[Oracle] 静音播放也失败，直接跳转');
+                goToResult();
+              });
             });
-          });
+          }
 
-          // 兜底超时 = 视频真实时长 + 3s（未知则 8s）
-          var timeoutMs = ((videoDuration > 1 ? videoDuration : 8) + 3) * 1000;
+          // === 卡顿检测：currentTime 不前进则视为卡顿 ===
+          function startStallDetection() {
+            var lastTime = divinationVideo.currentTime;
+            var stallStart = 0;
+            divinationVideo.addEventListener('timeupdate', function stallCheck() {
+              if (divinationDone) {
+                divinationVideo.removeEventListener('timeupdate', stallCheck);
+                return;
+              }
+              if (divinationVideo.currentTime > lastTime) {
+                lastTime = divinationVideo.currentTime;  // 播放在前进
+                stallStart = 0;
+                hideLoader();
+              }
+            });
+            // 每秒检查一次是否卡住
+            var stallTimer = setInterval(function() {
+              if (divinationDone || divinationVideo.ended) {
+                clearInterval(stallTimer);
+                return;
+              }
+              // currentTime 没变且非暂停 → 卡顿
+              if (divinationVideo.currentTime === lastTime && !divinationVideo.paused) {
+                if (stallStart === 0) {
+                  stallStart = Date.now();
+                  showLoader();
+                } else if (Date.now() - stallStart > 4000) {
+                  console.warn('[Oracle] 视频卡顿超过4秒，强制跳转结果页');
+                  clearInterval(stallTimer);
+                  goToResult();
+                }
+              } else {
+                stallStart = 0;
+              }
+            }, 1000);
+          }
+
+          // 缓冲足够 → 立即播放；不足 → 等待缓冲
+          if (hasEnoughBuffer()) {
+            console.log('[Oracle] 视频已缓冲足够，直接播放');
+            attemptPlay();
+          } else {
+            console.log('[Oracle] 视频缓冲不足，等待缓冲...');
+            showLoader();
+
+            function onReady() {
+              if (divinationDone) return;
+              console.log('[Oracle] 视频缓冲就绪，开始播放');
+              attemptPlay();
+            }
+            divinationVideo.addEventListener('canplaythrough', onReady, { once: true });
+
+            // progress 事件中持续检查缓冲量
+            function onProgress() {
+              if (divinationDone) {
+                divinationVideo.removeEventListener('progress', onProgress);
+                return;
+              }
+              if (hasEnoughBuffer()) {
+                divinationVideo.removeEventListener('progress', onProgress);
+                divinationVideo.removeEventListener('canplaythrough', onReady);
+                onReady();
+              }
+            }
+            divinationVideo.addEventListener('progress', onProgress);
+
+            // 6 秒后缓冲还不够 → 直接尝试播放（边播边缓冲）
+            setTimeout(function() {
+              if (!divinationDone) {
+                divinationVideo.removeEventListener('canplaythrough', onReady);
+                divinationVideo.removeEventListener('progress', onProgress);
+                console.warn('[Oracle] 缓冲等待超时，尝试直接播放');
+                attemptPlay();
+              }
+            }, 6000);
+          }
+
+          // 播放终极超时 = 视频时长 + 5s（未知则 20s）
+          var ultimateTimeout = ((videoDuration > 1 ? videoDuration : 20) + 5) * 1000;
           setTimeout(function() {
             if (!divinationDone) {
-              console.warn('[Oracle] 求卦过程超时，强制跳转');
+              console.warn('[Oracle] 求卦过程终极超时，强制跳转');
               goToResult();
             }
-          }, timeoutMs);
+          }, ultimateTimeout);
         }
 
+        // 启动播放
         if (divinationVideo.readyState >= 2) {
           startDivinationPlayback();
         } else {
+          showLoader();
           divinationVideo.addEventListener('loadedmetadata', startDivinationPlayback, { once: true });
-          // 3s 后元数据还没来也强制播
+          // 4 秒后元数据还没来 → 强制启动
           setTimeout(function() {
             if (!divinationDone) {
-              console.warn('[Oracle] 元数据加载超时，直接播放');
+              console.warn('[Oracle] 元数据加载超时，强制启动播放');
               startDivinationPlayback();
             }
-          }, 3000);
+          }, 4000);
         }
 
-        // === 终极安全网：无论如何 10s 后必须跳到结果页 ===
+        // === 绝对安全网：25s 后无论如何必须跳到结果页 ===
         setTimeout(function() {
           if (!divinationDone) {
-            console.warn('[Oracle] 终极超时，强制跳转结果页');
+            console.warn('[Oracle] 绝对超时，强制跳转结果页');
             goToResult();
           }
-        }, 10000);
+        }, 25000);
       };
 
       window.handleHistory = function(e) {
