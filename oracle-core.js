@@ -443,26 +443,31 @@ function castHexagram() {
 const STORAGE_KEY = 'daily_oracle_history';
 
 function saveToHistory(record) {
-  const history = getHistory();
-  // One divination per day — replace today's if exists
-  const today = new Date().toISOString().slice(0, 10);
-  const filtered = history.filter(r => r.date !== today);
-  const entry = {
-    id: Date.now(),
-    date: today,
-    primaryId: record.primaryId,
-    primaryName: record.primaryHex.name,
-    fortune: record.primaryHex.fortune,
-    reading: record.primaryHex.reading.slice(0, 60) + '...',
-    changingLines: record.changingLines,
-    changedId: record.changedId,
-    changedName: record.changedHex ? record.changedHex.name : null,
-    txHash: null,
-    timestamp: record.timestamp
-  };
-  filtered.unshift(entry);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-  return entry;
+  try {
+    const history = getHistory();
+    // One divination per day — replace today's if exists
+    const today = new Date().toISOString().slice(0, 10);
+    const filtered = history.filter(r => r.date !== today);
+    const entry = {
+      id: Date.now(),
+      date: today,
+      primaryId: record.primaryId,
+      primaryName: record.primaryHex.name,
+      fortune: record.primaryHex.fortune,
+      reading: record.primaryHex.reading.slice(0, 60) + '...',
+      changingLines: record.changingLines,
+      changedId: record.changedId,
+      changedName: record.changedHex ? record.changedHex.name : null,
+      txHash: null,
+      timestamp: record.timestamp
+    };
+    filtered.unshift(entry);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+    return entry;
+  } catch (err) {
+    console.warn('[Oracle] saveToHistory error:', err);
+    return { id: Date.now() };
+  }
 }
 
 function getHistory() {
