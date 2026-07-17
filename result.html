@@ -474,6 +474,39 @@
       font-weight: 600;
       color: var(--text-bright);
       letter-spacing: 1px;
+      flex: 1;
+    }
+
+    /* Language Toggle */
+    .lang-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 2px;
+      cursor: pointer;
+      transition: all 0.25s var(--ease-out);
+      flex-shrink: 0;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .lang-toggle:hover { border-color: var(--glass-border-active); box-shadow: var(--shadow-hover); }
+    .lang-toggle:active { transform: scale(0.95); }
+    .lang-option {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 11px;
+      color: var(--text-faint);
+      transition: all 0.2s var(--ease-out);
+      letter-spacing: 0.5px;
+    }
+    .lang-option.active {
+      background: linear-gradient(135deg, var(--primary-500), var(--primary-600));
+      color: #fff;
+      box-shadow: 0 1px 4px rgba(124, 92, 200, 0.3);
     }
 
     .detail-content {
@@ -867,7 +900,7 @@
       <div class="gua-interpretation-row anim-fade-up delay-1">
         <!-- Hero Gua Card (左) -->
         <div class="gua-card">
-          <div class="gua-stamp">神谕</div>
+          <div class="gua-stamp" data-zh="神谕" data-en="Oracle">神谕</div>
           <div class="gua-label" id="guaDate">乙巳年 六月初一</div>
           <div class="gua-name" id="guaName">--</div>
           <div class="gua-subtitle" id="guaSubtitle">--</div>
@@ -880,7 +913,11 @@
         <div class="detail-card">
           <div class="detail-header">
             <div class="detail-icon">◈</div>
-            <div class="detail-title">卦象解读</div>
+            <div class="detail-title" data-zh="卦象解读" data-en="Interpretation">卦象解读</div>
+            <div class="lang-toggle" onclick="toggleLang()" id="langToggle">
+              <span class="lang-option active" data-lang="zh">中</span>
+              <span class="lang-option" data-lang="en">EN</span>
+            </div>
           </div>
           <div class="detail-content" id="interpretation">--</div>
           <div class="detail-tags" id="detailTags"></div>
@@ -889,7 +926,7 @@
 
       <!-- Changed Hexagram -->
       <div class="changed-section anim-fade-up delay-2" id="changedSection" style="display:none;">
-        <div class="changed-label">动爻变化</div>
+        <div class="changed-label" data-zh="动爻变化" data-en="Changing Lines">动爻变化</div>
         <div class="changed-name" id="changedName">--</div>
         <div class="changed-desc" id="changedDesc">--</div>
       </div>
@@ -898,7 +935,7 @@
       <div class="detail-card anim-fade-up delay-3">
         <div class="detail-header">
           <div class="detail-icon">✦</div>
-          <div class="detail-title">今日运势</div>
+          <div class="detail-title" data-zh="今日运势" data-en="Today's Fortune">今日运势</div>
         </div>
         <div class="detail-content">
           <div class="fortune-grid" id="fortuneGrid"></div>
@@ -940,7 +977,7 @@
             <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
             <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
           </svg>
-          分享
+          <span id="shareBtnText">分享</span>
         </button>
         <button class="action-bar-btn btn-primary" onclick="saveToChain()" id="saveBtn">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -1244,6 +1281,97 @@
     renderInterpretation();
     renderFortune();
     checkAttestation();
+
+    // ============================================================
+    // Language Toggle (中/EN)
+    // ============================================================
+    const LANG_KEY = 'daily_oracle_lang';
+    let currentLang = localStorage.getItem(LANG_KEY) || 'zh';
+
+    function toggleLang() {
+      currentLang = currentLang === 'zh' ? 'en' : 'zh';
+      localStorage.setItem(LANG_KEY, currentLang);
+      applyLang(currentLang);
+    }
+
+    function applyLang(lang) {
+      // Update toggle button active state
+      document.querySelectorAll('.lang-option').forEach(el => {
+        el.classList.toggle('active', el.dataset.lang === lang);
+      });
+
+      // Update all elements with data-zh/data-en attributes
+      document.querySelectorAll('[data-zh][data-en]').forEach(el => {
+        el.textContent = el.dataset[lang];
+      });
+
+      // Update gua card
+      document.getElementById('guaName').textContent = lang === 'zh' ? hex.name : hex.en;
+      document.getElementById('guaSubtitle').textContent =
+        (lang === 'zh' ? '第' : '#') + id + (lang === 'zh' ? '卦 · ' : ' · ') +
+        (lang === 'zh' ? hex.fortune + '卦' : hex.fortune);
+      document.getElementById('guaMeaning').textContent = lang === 'zh' ? hex.image : (hex.image_en || hex.image);
+
+      // Update interpretation
+      document.getElementById('interpretation').textContent = lang === 'zh' ? hex.reading : (hex.reading_en || hex.reading);
+
+      // Update tags
+      const tags = lang === 'zh' ? (hex.tags || []) : (hex.tags_en || hex.tags || []);
+      const tagsContainer = document.getElementById('detailTags');
+      const tagClasses = ['tag-success', 'tag-primary', 'tag-warning', 'tag-info'];
+      tagsContainer.innerHTML = tags.map((tag, i) =>
+        '<span class="detail-tag ' + tagClasses[i % tagClasses.length] + '">' + tag + '</span>'
+      ).join('');
+
+      // Update fortune labels
+      const fortuneLabels = lang === 'zh'
+        ? ['事业', '财运', '感情', '健康']
+        : ['Career', 'Wealth', 'Love', 'Health'];
+      document.querySelectorAll('.fortune-label').forEach((el, i) => {
+        if (fortuneLabels[i]) el.textContent = fortuneLabels[i];
+      });
+
+      // Update changed section
+      if (changedId && changedName) {
+        const changedHex = HEXAGRAMS[changedId];
+        if (changedHex) {
+          const cnName = changedHex.name;
+          const enName = changedHex.en || cnName;
+          document.getElementById('changedName').textContent =
+            (lang === 'zh' ? '之' : '→ ') + (lang === 'zh' ? cnName : enName);
+          const descHex = lang === 'zh' ? hex : { name: hex.en || hex.name, reading: hex.reading_en || hex.reading };
+          const descChanged = lang === 'zh'
+            ? (changedHex.name)
+            : (changedHex.en || changedHex.name);
+          document.getElementById('changedDesc').textContent =
+            (lang === 'zh'
+              ? '动爻变化后，本卦「' + descHex.name + '」化为「' + descChanged + '」。'
+              : 'After change, the hexagram shifts from "' + descHex.name + '" to "' + descChanged + '". ')
+            + (lang === 'zh' ? changedHex.reading : (changedHex.reading_en || changedHex.reading)).slice(0, 60) + '…';
+        }
+      }
+
+      // Update blockchain section text
+      if (isAttested) {
+        document.getElementById('chainTitle').textContent =
+          'X Layer Testnet · ' + (lang === 'zh' ? '已上链存证' : 'On-Chain Attested');
+        document.getElementById('chainStatusText').textContent =
+          lang === 'zh' ? '交易已确认，卦象永存链上 · 不可篡改' : 'Transaction confirmed, hexagram eternally on-chain · Immutable';
+        document.getElementById('saveBtnText').textContent = lang === 'zh' ? '已存证' : 'Attested';
+      } else {
+        document.getElementById('chainTitle').textContent =
+          'X Layer Testnet · ' + (lang === 'zh' ? '链上存证' : 'On-Chain Attestation');
+        document.getElementById('chainStatusText').textContent =
+          lang === 'zh' ? '点击下方按钮，将卦象写入 X Layer 测试网' : 'Click below to write hexagram to X Layer Testnet';
+      }
+      document.getElementById('saveBtnText').textContent =
+        isAttested ? (lang === 'zh' ? '已存证' : 'Attested') : (lang === 'zh' ? '存证上链' : 'Attest on Chain');
+      document.getElementById('shareBtnText').textContent =
+        lang === 'zh' ? '分享' : 'Share';
+    }
+
+    // Apply saved language on load
+    applyLang(currentLang);
     })();
   </script>
 </body>
