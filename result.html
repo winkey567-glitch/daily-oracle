@@ -993,7 +993,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="oracle-core.js"></script>
+  <script src="oracle-core.js?v=2"></script>
   <script>
     // ============================================================
     // Read URL params (IIFE — return 需在函数体内)
@@ -1308,6 +1308,10 @@
       });
 
       // Update gua card
+      const now = new Date();
+      document.getElementById('guaDate').textContent = lang === 'zh'
+        ? getLunarDate()
+        : now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       document.getElementById('guaName').textContent = lang === 'zh' ? hex.name : hex.en;
       document.getElementById('guaSubtitle').textContent =
         (lang === 'zh' ? '第' : '#') + id + (lang === 'zh' ? '卦 · ' : ' · ') +
