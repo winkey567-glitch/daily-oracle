@@ -213,7 +213,7 @@
       color: var(--text-dim);
       letter-spacing: 4px;
     }
-    .header-right { width: 38px; }
+    .header-right { display: flex; align-items: center; }
 
     /* === Hero Gua Card — 神谕牌 === */
     .gua-card {
@@ -893,7 +893,12 @@
           </svg>
         </button>
         <div class="header-title">今日卦象</div>
-        <div class="header-right"></div>
+        <div class="header-right">
+          <div class="lang-toggle" onclick="toggleLang()" id="langToggle">
+            <span class="lang-option active" data-lang="zh">中</span>
+            <span class="lang-option" data-lang="en">EN</span>
+          </div>
+        </div>
       </div>
 
       <!-- Gua + Interpretation Row (左右并排) -->
@@ -914,10 +919,6 @@
           <div class="detail-header">
             <div class="detail-icon">◈</div>
             <div class="detail-title" data-zh="卦象解读" data-en="Interpretation">卦象解读</div>
-            <div class="lang-toggle" onclick="toggleLang()" id="langToggle">
-              <span class="lang-option active" data-lang="zh">中</span>
-              <span class="lang-option" data-lang="en">EN</span>
-            </div>
           </div>
           <div class="detail-content" id="interpretation">--</div>
           <div class="detail-tags" id="detailTags"></div>
