@@ -432,6 +432,8 @@
       margin-top: 6px;
       line-height: 1.7;
       opacity: 0.85;
+      max-height: 50px;
+      overflow-y: auto;
     }
 
     /* === 详情卡片 === */
@@ -532,6 +534,9 @@
       flex: 1 1 48%;
       margin-bottom: 0;
       padding: 18px 12px 14px;
+      display: flex;
+      flex-direction: column;
+      overflow: visible;
     }
     .gua-interpretation-row .gua-card::before { left: 8%; right: 8%; }
     .gua-interpretation-row .gua-name { font-size: 22px; letter-spacing: 1px; }
@@ -544,7 +549,7 @@
     .gua-interpretation-row .gua-line { gap: 6px; }
     .gua-interpretation-row .gua-position { font-size: 9px; width: 12px; }
     .gua-interpretation-row .gua-divider { margin: 10px auto 8px; width: 40px; }
-    .gua-interpretation-row .gua-meaning { font-size: 11px; line-height: 1.5; padding: 0 4px; }
+    .gua-interpretation-row .gua-meaning { font-size: 11px; line-height: 1.5; padding: 0 4px; overflow-y: auto; max-height: 80px; }
     .gua-interpretation-row .gua-stamp { width: 28px; height: 28px; font-size: 10px; top: 10px; right: 10px; }
     .gua-interpretation-row .detail-card {
       flex: 1 1 48%;
@@ -556,7 +561,7 @@
     .gua-interpretation-row .detail-header { margin-bottom: 8px; }
     .gua-interpretation-row .detail-icon { width: 26px; height: 26px; font-size: 12px; border-radius: 6px; }
     .gua-interpretation-row .detail-title { font-size: 12px; }
-    .gua-interpretation-row .detail-content { font-size: 11px; line-height: 1.6; flex: 1; }
+    .gua-interpretation-row .detail-content { font-size: 11px; line-height: 1.6; flex: 1; overflow-y: auto; max-height: 120px; }
     .gua-interpretation-row .detail-tags { margin-top: 8px; gap: 4px; }
     .gua-interpretation-row .detail-tag { padding: 3px 8px; font-size: 9px; }
     .detail-tag {
