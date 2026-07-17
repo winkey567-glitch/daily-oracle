@@ -361,7 +361,6 @@
       overflow: hidden;
     }
 
-    .bg-image,
     .bg-loop {
       position: absolute;
       inset: 0;
@@ -683,7 +682,6 @@
 
     <!-- 背景层 -->
     <div class="bg-layer">
-      <img class="bg-image" id="bgImage" src="素材/静态背景图.png" alt="水墨山水背景" loading="lazy" decoding="async">
       <video class="bg-loop" id="bgLoop" src="素材/循环背景.mp4" muted loop playsinline preload="metadata"></video>
       <div class="petals-container">
         <div class="petal"></div>
@@ -746,7 +744,6 @@
       var introLayer = document.getElementById('introLayer');
       var contentLayer = document.getElementById('contentLayer');
       var bgLoop = document.getElementById('bgLoop');
-      var bgImage = document.getElementById('bgImage');
       var uiShown = false;
       var introEnded = false;
       var videoReady = false;
@@ -774,7 +771,6 @@
         contentLayer.classList.add('ui-visible');
         bgLoop.play().then(function() {
           bgLoop.style.opacity = '1';
-          bgImage.style.opacity = '0';
         }).catch(function(e) {
           console.warn('[Oracle] 循环背景播放失败', e);
         });
@@ -922,7 +918,6 @@
         setTimeout(function() {
           bgLoop.play().then(function() {
             bgLoop.style.opacity = '1';
-            bgImage.style.opacity = '0';
             console.log('[Oracle] 循环背景已启动');
           }).catch(function(e) {
             console.warn('[Oracle] 循环背景播放失败', e);
@@ -941,7 +936,6 @@
         contentLayer.classList.add('ui-visible');
         bgLoop.play().then(function() {
           bgLoop.style.opacity = '1';
-          bgImage.style.opacity = '0';
         }).catch(function(e) {
           console.warn('[Oracle] 循环背景播放失败', e);
         });
